@@ -1,0 +1,111 @@
+'Student books a new room reservation
+
+@startuml
+Autonumber
+
+actor Student
+boundary CreateReservationForm
+boundary ReservationList
+control ReservationController
+
+entity User
+entity Room
+entity Resort
+entity Reservation
+entity Group
+
+
+database OperationDB
+database UserDB
+database ResortDB
+database AccountDB
+
+Student -> CreateReservationForm: LoginSystem(identification)
+note right: "identification" is username and password
+CreateReservationForm -> ReservationController: LoginSystem(identification)
+ReservationController -> UserDB: GetStudentInformation(username, isUsernameValid)
+	activate User
+UserDB --> ReservationController: Verify Student Information
+ReservationController --> CreateReservationForm: VerifyStudentInformation(username)
+CreateReservationForm --> Student: Display Resorts Researching Form
+
+loop not a wanted resort
+Student -> CreateReservationForm: CompleteResortForm
+Student -> CreateReservationForm: ResearchResort(requirements)
+note right: "requirements" includes place, grade, price
+CreateReservationForm -> ReservationController: ResearchResort(requirements)
+ReservationController -> ResortDB: GetResortInformation
+activate Resort
+ResortDB --> ReservationController: Resort Information
+ReservationController --> CreateReservationForm: Resort Information
+CreateReservationForm --> Student: Resort Information
+loop not a wanted room
+CreateReservationForm --> Student: Display Room Researching Form
+Student -> CreateReservationForm: CompleteRoomForm
+Student -> CreateReservationForm: ResearchRoom(requirements)
+note right: "requirements" includes startDate, endDate, facilities
+CreateReservationForm -> ReservationController: ResearchRoom(requirements)
+ReservationController -> ResortDB: GetRoomInformation
+deactivate Resort
+activate Room
+ResortDB --> ReservationController: Room Information
+ReservationController --> CreateReservationForm: Room Information
+alt is room available
+CreateReservationForm --> Student: Display Available Rooms		
+else no room available
+CreateReservationForm --> Student: Return to Room Researching Form
+end
+end
+end
+alt group reservation
+alt create a group
+Student -> CreateReservationForm: CompleteCreateGroupForm
+CreateReservationForm -> ReservationController: CreateGroup
+ReservationController -> Group: CreateGroup
+activate Group
+Group --> ReservationController: GroupRecords(groupId)
+ReservationController --> CreateReservationForm: GroupRecords(groupId)
+CreateReservationForm --> Student: Confirm Group Created
+else join a group
+Student -> CreateReservationForm: JoinGroup(groupId)
+CreateReservationForm -> ReservationController: JoinGroup(groupId)
+ReservationController -> UserDB: JoinGroup(groupId)
+deactivate Group
+UserDB --> ReservationController: GroupInformation(groupId)
+ReservationController --> CreateReservationForm: GroupInformation(groupId)
+CreateReservationForm --> Student: Confirm Group Joined
+end
+Student -> CreateReservationForm: BookGroupReservation(room)
+CreateReservationForm -> ReservationController: BookGroupReservation(room)
+ReservationController -> OperationDB: BookGroupReservation(room)	
+else personal reservation
+Student -> CreateReservationForm: BookPersonalReservation(room)	
+CreateReservationForm -> ReservationController: BookPersonalReservation(room)
+ReservationController -> OperationDB: BookPersonalReservation(room)
+end
+
+activate Reservation
+ReservationController -> OperationDB: CalculateFee(reservationId, totalCost)
+ReservationController -> OperationDB: CalculateDeposit(reservationId, deposit)
+deactivate Room
+
+OperationDB --> ReservationController: Room Reservation Records
+ReservationController --> ReservationList: DisplayTransactions(roomReservationRecords)
+
+ReservationList --> Student: Display total cost and Deposit
+ReservationList --> Student: Display Payment Page
+Student -> ReservationList: AddPayment(reservationId, amount)
+ReservationList -> ReservationController: AddPayment(reservationId, amount)
+ReservationController -> AccountDB: AddPayment(reservationId, amount)
+ReservationController -> AccountDB: UpdateCost(reservationId, ref totalCost, bool deposit = 0)
+AccountDB --> ReservationController: Payment Records
+deactivate User
+deactivate Reservation
+ReservationController --> ReservationList: DisplayTransactions(paymentRecords)
+ReservationList --> Student: Display Payment Details
+
+@enduml
+
+
+
+
